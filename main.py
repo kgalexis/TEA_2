@@ -1,51 +1,48 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn import svm
-from tools import labelEncoder, normalizer, select_features, shrink_features, sample, benchmark, plot
+from tools import *
+from tools2 import *
 import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
 
-df = pd.read_csv("./train_2_labels.csv",  sep='\t', header=None, names=["id", "user", "label", "text"])
-X = df.text
-Y = df.label
+### Training Dataset #####
+train_df = load_dataset("./train_2_labels.csv")
+print(explore(train_df))
+train_x = train_df.text
+train_y = train_df.label
+print(train_x.shape, train_y.shape)
 
+### Dev Dataset #####
+dev_df = load_dataset('./dev_2_labels.csv')
+print(explore(dev_df))
+dev_x = dev_df.text
+dev_y = dev_df.label
+train_y, dev_y = labelEncoder(train_y, dev_y)
+print(dev_x.shape, dev_y.shape)
+
+### Params to play with ###
+vectorizers = [CountVectorizer(), TfidfVectorizer()]
+max_features = np.arange(1000, 9001, 500)
+stopwords = [None, 'english']
+ngrams = [(1,1), (1,2), (1,3)]
+
+### Find bests feature set ###
+best = checker(train_x, train_y, dev_x, dev_y,  [vectorizers,max_features,stopwords,ngrams])
+print(best)
+
+### Play dif tricks with best feature set ###
+train_x, dev_x = select_features(train_x, dev_x, choice="given", v=best)
+train_x, dev_x = normalizer(train_x, dev_x)
+#train_x, dev_x = shrink_features(train_x, dev_x, k=10)
+train_x, dev_x = shrink_features(train_x, dev_x, k=100, choice="SVD")
+train_x, train_y = sample(train_x, train_y)
+
+'''
 train_x, test_x, train_y, test_y = train_test_split(X, Y, test_size=0.2, random_state=42)
-train_y, test_y = labelEncoder(train_y, test_y)
-
-train_x, test_x = select_features(train_x, test_x, choice="tf")
-train_x, test_x = normalizer(train_x, test_x)
-train_x, test_x = shrink_features(train_x, test_x, k=10)
-train_x, train_y = sample(train_x,train_y)
-
-print('Training instances')
-for i in range(0,int(np.max(train_y))):
-    print('instances of class '+str(i)+' : '+str(len(train_y[train_y==i])))
-
-print('\nTesting instances')
-for i in range(0,int(np.max(test_y))):
-    print('instances of class '+str(i)+' : '+str(len(test_y[test_y==i])))
+'''
 
 from sklearn.utils import shuffle
 train_x, train_y = shuffle(train_x, train_y, random_state=1989)
 
-#metric = 'Accuracy'
-metric = 'f1'
-
-results = {'train_size': [], 'on_test': [], 'on_train': []}
-for i in range(1,11):
-    if(i==10):
-        train_x_part = train_x
-        train_y_part = train_y
-    else:
-        to = int(i*(train_x.shape[0]/10))
-        #print(to)
-        train_x_part = train_x[0:to,:]
-        train_y_part = train_y[0:to]
-    print(train_x_part.shape)
-    results['train_size'].append(train_x_part.shape[0])
-    clf = svm.LinearSVC(random_state = 1989, C=100., penalty = 'l2', max_iter =1000)
-    result = benchmark(clf, train_x_part, train_y_part, test_x, test_y, metric)
-    results['on_test'].append(result[metric])
-    result = benchmark(clf, train_x_part, train_y_part, train_x_part, train_y_part, metric)
-    results['on_train'].append(result[metric])
-
-plot(results, metric)
+### Test best final feature set ###
+test_lines(train_x, train_y, dev_x, dev_y)

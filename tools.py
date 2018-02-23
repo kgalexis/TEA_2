@@ -6,14 +6,16 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler, Normalizer, KernelCenterer
 from sklearn import metrics
 from pprint import pprint
+from sklearn import svm
 
+### Function that returns labels encoded to numbers ###
 def labelEncoder(train_y, test_y):
     normalizer = LabelEncoder()
     train_y = normalizer.fit_transform(train_y)
     test_y = normalizer.transform(test_y)
     return train_y, test_y
 
-# normalize values between -1 and 1 with the simple minmax algorithm
+### Normalizer of values based on choice ###
 def normalizer(train_X, test_X, feature_range=(-1.0, 1.0), choice=None):
     if choice==None:
         return train_X, test_X
@@ -23,8 +25,11 @@ def normalizer(train_X, test_X, feature_range=(-1.0, 1.0), choice=None):
     test_X = normalizer.transform(test_X)
     return train_X, test_X
 
-def select_features(train_X, test_X, k=10, choice="tf", stop_words=None, ngram=1, analyzer="word", max_df=1.0, min_df=1, max_features=None):
-    if choice=="tf":
+### Function that constructs features from text ###
+def select_features(train_X, test_X, k=10, choice="tf", v=None, stop_words=None, ngram=1, analyzer="word", max_df=1.0, min_df=1, max_features=None):
+    if choice=="given":
+        v = v
+    elif choice=="tf":
         v = CountVectorizer(stop_words=stop_words,ngram_range=(1, ngram), analyzer="word", max_df=max_df, min_df=min_df, max_features=max_features)
     elif choice=="tf-idf":
         v = TfidfVectorizer(stop_words=stop_words,ngram_range=(1, ngram), analyzer="word", max_df=max_df, min_df=min_df, max_features=max_features)
@@ -32,8 +37,7 @@ def select_features(train_X, test_X, k=10, choice="tf", stop_words=None, ngram=1
     test_X = v.transform(test_X)
     return train_X, test_X
     
-# k may be either an integer greater than zero
-# or a double between 0 and 1
+### Dimensionality reduction based on choice ###
 def shrink_features(train_X, test_X, k=10, choice=None):
     if choice==None:
         return train_X, test_X
@@ -46,6 +50,7 @@ def shrink_features(train_X, test_X, k=10, choice=None):
     test_X = selector.transform(test_X)
     return train_X, test_X
 	
+### Sampling function based on choice ###
 def sample(train_X,train_y,choice=None):
     unique, counts = np.unique(train_y, return_counts=True)
     labels = dict(zip(unique, counts))
@@ -105,4 +110,27 @@ def plot(results, metric='Accuracy'):
     plt.legend([line_up, line_down], [metric+' on Train', metric+' on Test'], prop = fontP)
     plt.grid(True)
     
-    #fig.savefig('temp.png')
+    fig.savefig('best_100_svd.png')
+    
+def test_lines(train_x, train_y, test_x, test_y):
+    metric = 'f1'
+    
+    results = {'train_size': [], 'on_test': [], 'on_train': []}
+    for i in range(1,11):
+        if(i==10):
+            train_x_part = train_x
+            train_y_part = train_y
+        else:
+            to = int(i*(train_x.shape[0]/10))
+            #print(to)
+            train_x_part = train_x[0:to,:]
+            train_y_part = train_y[0:to]
+        print(train_x_part.shape)
+        results['train_size'].append(train_x_part.shape[0])
+        clf = svm.LinearSVC(random_state = 1989, C=100., penalty = 'l2', max_iter =1000)
+        result = benchmark(clf, train_x_part, train_y_part, test_x, test_y, metric)
+        results['on_test'].append(result[metric])
+        result = benchmark(clf, train_x_part, train_y_part, train_x_part, train_y_part, metric)
+        results['on_train'].append(result[metric])
+    
+    plot(results, metric)    
