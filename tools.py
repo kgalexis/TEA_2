@@ -8,25 +8,29 @@ from sklearn import metrics
 from pprint import pprint
 from sklearn import svm
 
+
 ### Function that returns labels encoded to numbers ###
-def labelEncoder(train_y, test_y):
+def labelEncoder1(train_y, dev_y, test_y):
     normalizer = LabelEncoder()
     train_y = normalizer.fit_transform(train_y)
+    dev_y = normalizer.transform(dev_y)
     test_y = normalizer.transform(test_y)
-    return train_y, test_y
+    return train_y, dev_y, test_y
 
 ### Normalizer of values based on choice ###
-def normalizer(train_X, test_X, feature_range=(-1.0, 1.0), choice=None):
+def normalizer(train_X, train_X_2, dev_X, test_X, feature_range=(-1.0, 1.0), choice=None):
     if choice==None:
-        return train_X, test_X
+        return train_X, train_X_2, dev_X, test_X
     elif choice=="MinMax":
         normalizer = MinMaxScaler(feature_range=feature_range)
     train_X = normalizer.fit_transform(train_X)
+    train_X_2 = normalizer.transform(train_X_2)
+    dev_X = normalizer.transform(dev_X)
     test_X = normalizer.transform(test_X)
-    return train_X, test_X
+    return train_X, train_X_2, dev_X, test_X
 
 ### Function that constructs features from text ###
-def select_features(train_X, test_X, k=10, choice="tf", v=None, stop_words=None, ngram=1, analyzer="word", max_df=1.0, min_df=1, max_features=None):
+def select_features(train_X, train_X_2, dev_X, test_X, k=10, choice="tf", v=None, stop_words=None, ngram=1, analyzer="word", max_df=1.0, min_df=1, max_features=None):
     if choice=="given":
         v = v
     elif choice=="tf":
@@ -34,21 +38,25 @@ def select_features(train_X, test_X, k=10, choice="tf", v=None, stop_words=None,
     elif choice=="tf-idf":
         v = TfidfVectorizer(stop_words=stop_words,ngram_range=(1, ngram), analyzer="word", max_df=max_df, min_df=min_df, max_features=max_features)
     train_X = v.fit_transform(train_X)
+    train_X_2 = v.transform(train_X_2)
+    dev_X = v.transform(dev_X)
     test_X = v.transform(test_X)
-    return train_X, test_X
+    return train_X, train_X_2, dev_X, test_X
     
 ### Dimensionality reduction based on choice ###
-def shrink_features(train_X, test_X, k=10, choice=None):
+def shrink_features(train_X, train_X_2, dev_X, test_X, k=10, choice=None):
     if choice==None:
-        return train_X, test_X
+        return train_X, train_X_2, dev_X, test_X
     elif choice == "PCA":
         selector = PCA(n_components=k)
     elif choice == "SVD":
         selector = TruncatedSVD(n_components=k, random_state=1989)       
     selector.fit(train_X)
     train_X = selector.transform(train_X)
+    train_X_2 = selector.transform(train_X_2)
+    dev_X = selector.transform(dev_X)
     test_X = selector.transform(test_X)
-    return train_X, test_X
+    return train_X, train_X_2, dev_X, test_X
 	
 ### Sampling function based on choice ###
 def sample(train_X,train_y,choice=None):
@@ -101,7 +109,7 @@ def plot(results, metric='Accuracy'):
     fig = plt.figure()
     fig.suptitle('Learning Curves', fontsize=20)
     ax = fig.add_subplot(111)
-    ax.axis([0, 1600, 0, 1.1])
+    ax.axis([0, 3000, 0, 1.1])
     line_up, = ax.plot( results['train_size'], results['on_train'], 'o-',label=metric+' on Train')
     line_down, = ax.plot( results['train_size'] , results['on_test'], 'o-',label=metric+' on Test')
     
