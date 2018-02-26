@@ -7,6 +7,8 @@ from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler, No
 from sklearn import metrics
 from pprint import pprint
 from sklearn import svm
+import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
 
 
 ### Function that returns labels encoded to numbers ###
@@ -98,11 +100,26 @@ def benchmark(clf, train_X, train_y, test_X, test_y, metric):
     result = {'f1' : f1,'Accuracy' : accuracy,'train size' : len(train_y), 'test size' : len(test_y), 'predictions': pred }
     print(" {}: {} ".format(metric, result[metric]))
     return result
-
-def plot(results, metric='Accuracy'):
     
-    import matplotlib.pyplot as plt
-    from matplotlib.font_manager import FontProperties
+def learning_curve(train_x, train_y, test_x, test_y, metric='f1', clf=None):  
+    results = {'train_size': [], 'on_test': [], 'on_train': []}
+    for i in range(1,11):
+        if(i==10):
+            train_x_part = train_x
+            train_y_part = train_y
+        else:
+            to = int(i*(train_x.shape[0]/10))
+            #print(to)
+            train_x_part = train_x[0:to,:]
+            train_y_part = train_y[0:to]
+        print(train_x_part.shape)
+        results['train_size'].append(train_x_part.shape[0])
+        if clf==None:
+            clf = svm.LinearSVC(random_state = 1989, C=100., penalty = 'l2', max_iter =1000)
+        result = benchmark(clf, train_x_part, train_y_part, test_x, test_y, metric)
+        results['on_test'].append(result[metric])
+        result = benchmark(clf, train_x_part, train_y_part, train_x_part, train_y_part, metric)
+        results['on_train'].append(result[metric])
     
     fontP = FontProperties()
     fontP.set_size('small')
@@ -117,28 +134,7 @@ def plot(results, metric='Accuracy'):
     plt.ylabel(metric, fontsize=16)
     plt.legend([line_up, line_down], [metric+' on Train', metric+' on Test'], prop = fontP)
     plt.grid(True)
+    plt.autoscale(enable=True, axis='both')
+    fig.savefig('temp.png')
     
-    fig.savefig('best_100_svd.png')
-    
-def test_lines(train_x, train_y, test_x, test_y):
-    metric = 'f1'
-    
-    results = {'train_size': [], 'on_test': [], 'on_train': []}
-    for i in range(1,11):
-        if(i==10):
-            train_x_part = train_x
-            train_y_part = train_y
-        else:
-            to = int(i*(train_x.shape[0]/10))
-            #print(to)
-            train_x_part = train_x[0:to,:]
-            train_y_part = train_y[0:to]
-        print(train_x_part.shape)
-        results['train_size'].append(train_x_part.shape[0])
-        clf = svm.LinearSVC(random_state = 1989, C=100., penalty = 'l2', max_iter =1000)
-        result = benchmark(clf, train_x_part, train_y_part, test_x, test_y, metric)
-        results['on_test'].append(result[metric])
-        result = benchmark(clf, train_x_part, train_y_part, train_x_part, train_y_part, metric)
-        results['on_train'].append(result[metric])
-    
-    plot(results, metric)    
+    plt.show()

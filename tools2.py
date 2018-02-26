@@ -21,8 +21,7 @@ def strip(text):
 def explore(df):
     print('Observations:', len(df.index))
     for label in set(df.label):
-        print('%.2f'%(len(df[df.label == label])/len(df.index)*100), '%', label)
-    return
+        print('{:.2f} % {}'.format(len(df[df.label == label])/df.shape[0]*100, label))
 
 ### Loading Dataset ###
 def load_dataset(path):
